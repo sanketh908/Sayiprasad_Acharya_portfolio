@@ -648,6 +648,12 @@ export function MoltenRingCarousel({
     /** Index of the slot squared up to the viewer. Half the count would land
         between two slots whenever the count is odd, so it is floored. */
     const FRONT = Math.floor(count / 2);
+    /** The turn runs from the first card to the last once, not round forever:
+        past either end, wheel and swipe fall through to the page. */
+    const FIRST = -FRONT;
+    const LAST = count - 1 - FRONT;
+    const bound = (v: number) => clamp(v, FIRST, LAST);
+    progress = goal = FIRST;
 
     const resize = () => {
       const w = canvas.clientWidth;
@@ -667,32 +673,61 @@ export function MoltenRingCarousel({
     observer.observe(canvas);
 
     // --- input ------------------------------------------------------------
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault();
+    /** Turns the ring by `by` slots; false once it is pinned at an end, so the
+        caller leaves the event to scroll the page. */
+    const turn = (by: number) => {
+      const next = bound(goal + by);
+      if (next === goal) return false;
       tween = null;
-      goal += event.deltaY * WHEEL;
+      goal = next;
       lastInput = performance.now();
       snapped = false;
+      return true;
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (turn(event.deltaY * WHEEL)) event.preventDefault();
     };
     canvas.addEventListener("wheel", onWheel, { passive: false });
 
+    // A vertical swipe turns the ring like the wheel does. The browser only
+    // lets a touch scroll be cancelled from its start, so a swipe that begins
+    // at an end scrolls the page and one that reaches an end stops there.
+    let touchY: number | null = null;
+    const onTouchStart = (event: TouchEvent) => {
+      touchY = event.touches.length === 1 ? event.touches[0].clientY : null;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (touchY === null) return;
+      const y = event.touches[0].clientY;
+      const moved = turn((touchY - y) * DRAG);
+      touchY = y;
+      if (moved && event.cancelable) event.preventDefault();
+    };
+    canvas.addEventListener("touchstart", onTouchStart, { passive: true });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+
     step.current = (by: number) => {
-      tween = { from: goal, to: Math.round(goal) + by, at: performance.now() };
+      tween = {
+        from: goal,
+        to: bound(Math.round(goal) + by),
+        at: performance.now(),
+      };
       lastInput = performance.now();
       snapped = true;
     };
 
+    // Mouse and pen drag the ring vertically; touch is turned by the touch
+    // handlers above, and pointer events only tell a tap from a swipe.
     let dragFrom: number | null = null;
     let dragTravel = 0;
-    // Mouse and pen turn the ring vertically. A finger turns it with a sideways
-    // swipe instead, so an up/down swipe still scrolls the page past it.
-    let dragX = false;
+    let touch = false;
     const onDown = (event: PointerEvent) => {
-      dragX = event.pointerType === "touch";
-      dragFrom = dragX ? event.clientX : event.clientY;
+      touch = event.pointerType === "touch";
+      dragFrom = event.clientY;
       dragTravel = 0;
       tween = null;
-      canvas.setPointerCapture(event.pointerId);
+      if (!touch) canvas.setPointerCapture(event.pointerId);
     };
     const onMove = (event: PointerEvent) => {
       const box = canvas.getBoundingClientRect();
@@ -702,27 +737,22 @@ export function MoltenRingCarousel({
       pointerX = nx;
       pointerY = ny;
       if (dragFrom !== null) {
-        const at = dragX ? event.clientX : event.clientY;
-        const travel = (dragFrom - at) * (dragX ? 1.6 : 1);
+        const travel = dragFrom - event.clientY;
         dragTravel += Math.abs(travel);
-        dragFrom = at;
-        goal += travel * DRAG;
-        lastInput = performance.now();
-        snapped = false;
+        dragFrom = event.clientY;
+        if (!touch) turn(travel * DRAG);
       }
     };
     const onUp = () => {
       const wasClick = dragFrom !== null && dragTravel < CLICK_SLOP;
       dragFrom = null;
       if (!wasClick || hovered < 0) return;
-      // Rotate to the front slot, taking whichever direction is shorter.
-      const want = (((hovered - FRONT) % count) + count) % count;
-      tween = {
-        from: goal,
-        to: want + Math.round((goal - want) / count) * count,
-        at: performance.now(),
-      };
+      // The card at the front is the one at goal + FRONT.
+      tween = { from: goal, to: hovered - FRONT, at: performance.now() };
       snapped = true;
+    };
+    const onCancel = () => {
+      dragFrom = null;
     };
     const onLeave = () => {
       pointerX = -1;
@@ -733,7 +763,7 @@ export function MoltenRingCarousel({
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp);
-    canvas.addEventListener("pointercancel", onUp);
+    canvas.addEventListener("pointercancel", onCancel);
     canvas.addEventListener("pointerleave", onLeave);
 
     // --- frame ------------------------------------------------------------
@@ -956,7 +986,9 @@ export function MoltenRingCarousel({
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);
-      canvas.removeEventListener("pointercancel", onUp);
+      canvas.removeEventListener("pointercancel", onCancel);
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
       canvas.removeEventListener("pointerleave", onLeave);
       for (const image of images) image.onload = null;
       if (atlas) gl.deleteTexture(atlas);
