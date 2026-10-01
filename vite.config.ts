@@ -7,5 +7,5 @@ export default defineConfig({
   // Relative base so the build works on any GitHub Pages path.
   base: "./",
   plugins: [react(), tailwindcss()],
-  resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+  resolve: { alias: { "@": path.resolve(import.meta.dirname, "./src") } },
 })

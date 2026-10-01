@@ -1,111 +1,130 @@
+@import "tailwindcss";
+
+/* Graphite & ember: a pencil artist's palette. One theme, dark, so the
+   animated background and the art carry the colour. */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --background: oklch(0.17 0.006 60);
+  --foreground: oklch(0.95 0.012 85);
+  --muted: oklch(0.25 0.008 60);
+  --muted-foreground: oklch(0.74 0.014 75);
+  --accent: oklch(0.76 0.13 55);
+  --border: oklch(1 0 0 / 0.12);
+  color-scheme: dark;
+}
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --animate-first: move-vertical 30s ease infinite;
+  --animate-second: move-in-circle 20s reverse infinite;
+  --animate-third: move-in-circle 40s linear infinite;
+  --animate-fourth: move-horizontal 40s ease infinite;
+  --animate-fifth: move-in-circle 20s ease infinite;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  @keyframes move-horizontal {
+    0% { transform: translateX(-50%) translateY(-10%); }
+    50% { transform: translateX(50%) translateY(10%); }
+    100% { transform: translateX(-50%) translateY(-10%); }
+  }
+  @keyframes move-in-circle {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(180deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @keyframes move-vertical {
+    0% { transform: translateY(-50%); }
+    50% { transform: translateY(50%); }
+    100% { transform: translateY(-50%); }
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
+html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
 body {
-  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+::selection { background: var(--accent); color: var(--background); }
+
+/* Scroll reveal: elements start lowered and transparent, settle when seen. */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--delay, 0ms);
+}
+[data-reveal][data-in] { opacity: 1; transform: none; }
+
+/* Phones: the fly-in keeps its drift, tilt and fade but skips the blur, which
+   would put a filter layer on every tile mid-scroll. Narrow screens also
+   halve the sideways drift so tiles never poke past the edge. */
+@media (hover: none) { .fly-in { --fly-blur: none; } }
+@media (max-width: 640px) { .fly-in { --fx: 0px !important; } }
+
+button, a, [role="button"] { touch-action: manipulation; }
+
+dialog::backdrop { background: oklch(0.1 0.005 60 / 0.88); backdrop-filter: blur(6px); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+  *, *::before, *::after { animation-duration: 0s !important; animation-iteration-count: 1 !important; }
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+@keyframes glass-ripple {
+  from { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+/* Gallery tiles fly in from scattered positions and settle as they scroll in.
+   Scroll-driven where supported; elsewhere they are simply in place. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .fly-in {
+      animation: fly-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 40%;
+    }
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+@keyframes fly-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--fx, 0), 140px) rotate(var(--fr, 0deg)) scale(0.82);
+    filter: var(--fly-blur, blur(6px));
   }
-}
-p {
-  margin: 0;
+  to { opacity: 1; transform: none; filter: none; }
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* Section labels: each letter rises out of its own clip, one after another. */
+.rise__clip { display: inline-block; overflow: hidden; padding-bottom: 0.08em; margin-bottom: -0.08em; vertical-align: bottom; }
+.rise__ch {
+  display: inline-block;
+  transform: translateY(105%) rotate(6deg);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--i) * 45ms);
+}
+.rise[data-in] .rise__ch { transform: none; }
+[data-reveal].rise { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .rise__ch { transform: none; transition: none; } }
+
+/* "lit": real hover on devices that can hover, or [data-active] set by
+   useTouchLight as an element crosses mid-screen on touch devices. */
+@custom-variant lit {
+  @media (hover: hover) { &:hover { @slot; } }
+  &[data-active] { @slot; }
 }
